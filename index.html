@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>dcd - "elgris/microservice-app-example"</title>
+</head>
+
+<body>
+  <h1>elgris/microservice-app-example</h1>
+
+  <table width="100%" height="100%">
+    <tr>
+      <td valign="top" width="100">
+        <h2>commands</h2>
+        <button id="ps_run_button">ps</button><br>
+        <button id="logs_run_button">logs</button><br>
+        <button id="start_run_button">start</button><br>
+        <button id="stop_run_button">stop</button><br>
+        <button id="up_run_button">up</button><br>
+        <button id="down_run_button">down</button><br>
+
+        <h2>services</h2>
+        <input type="checkbox" id="zipkin_srv" name="srv_check" value="zipkin">zipkin<br>
+        <input type="checkbox" id="users-api_srv" name="srv_check" value="users-api">users-api<br>
+        <input type="checkbox" id="auth-api_srv" name="srv_check" value="auth-api">auth-api<br>
+        <input type="checkbox" id="redis-queue_srv" name="srv_check" value="redis-queue">redis-queue<br>
+        <input type="checkbox" id="log-message-processor_srv" name="srv_check"
+          value="log-message-processor">log-message-processor<br>
+        <input type="checkbox" id="todos-api_srv" name="srv_check" value="todos-api">todos-api<br>
+        <input type="checkbox" id="frontend_srv" name="srv_check" value="frontend">frontend<br>
+        <button id="all_button">all</button>
+        <button id="none_button">none</button><br>
+
+        <h2>options</h2>
+        <input type="checkbox" id="up_build">build<br>
+      </td>
+
+      <td valign="top">
+        <div style="text-align: center">
+          <textarea id="output_textarea" cols=90 rows=40 style="font-family:monospace" readonly></textarea>
+        </div>
+        <div style="text-align: right">
+          <button id="top_button">top</button>
+          <button id="bottom_button">bottom</button>
+          <input type="checkbox" id="lock_bottom_check" checked>lock bottom
+        </div>
+      </td>
+
+      <td valign="top" width="100">
+        <h2>kill</h2>
+        <button id='sigint_button'>SIGINT</button>
+      </td>
+    </tr>
+  </table>
+
+  <script type="text/javascript">
+    function runDockerCompose(args) {
+      // Clear output textarea.
+      document.getElementById('output_textarea').textContent = ''
+
+      // Run command.
+      const spawn = require('child_process').spawn;
+      const child = spawn(
+        '/usr/local/bin/docker-compose', ['--no-ansi'].concat(args), {
+          'cwd': '/Users/sho.minagawa/src/github.com/elgris/microservice-app-example',
+        }
+      );
+
+      // Set up event callbacks.
+      child.stdout.on('data', (data) => {
+        textArea = document.getElementById('output_textarea');
+        textArea.textContent += data;
+        if (document.getElementById('lock_bottom_check').checked) {
+          textArea.scrollTop = textArea.scrollHeight;
+        }
+      });
+      child.stderr.on('data', (data) => {
+        textArea = document.getElementById('output_textarea');
+        textArea.textContent += data;
+        if (document.getElementById('lock_bottom_check').checked) {
+          textArea.scrollTop = textArea.scrollHeight;
+        }
+      });
+      child.on('exit', (data) => {
+        document.getElementById('output_textarea').textContent += '\n\nEXIT';
+        if (document.getElementById('lock_bottom_check').checked) {
+          textArea.scrollTop = textArea.scrollHeight;
+        }
+      });
+
+      // Set up sigint button callback.
+      document.getElementById('sigint_button').onclick = function () {
+        child.kill('SIGINT')
+      }
+    }
+    function getCheckedServices() {
+      srvs = [];
+      checks = document.getElementsByName('srv_check');
+      for (i = 0; i < checks.length; ++i) {
+        if (checks[i].checked) {
+          srvs.push(checks[i].value);
+        }
+      }
+      return srvs;
+    }
+    document.getElementById('ps_run_button').onclick = function () {
+      runDockerCompose(['ps']);
+    };
+    document.getElementById('logs_run_button').onclick = function () {
+      runDockerCompose(['logs'].concat(getCheckedServices()));
+    };
+    document.getElementById('start_run_button').onclick = function () {
+      runDockerCompose(['start'].concat(getCheckedServices()));
+    };
+    document.getElementById('stop_run_button').onclick = function () {
+      runDockerCompose(['stop'].concat(getCheckedServices()));
+    };
+    document.getElementById('up_run_button').onclick = function () {
+      if (document.getElementById('up_build').checked) {
+        runDockerCompose(['up', '--build']);
+      } else {
+        runDockerCompose(['up']);
+      }
+    };
+    document.getElementById('down_run_button').onclick = function () {
+      runDockerCompose(['down']);
+    };
+
+    function switchAllCheckboxes(name, checked) {
+      checks = document.getElementsByName(name);
+      for (i = 0; i < checks.length; ++i) {
+        checks[i].checked = checked;
+      }
+    }
+    document.getElementById('all_button').onclick = function () {
+      switchAllCheckboxes('srv_check', true);
+    };
+    document.getElementById('none_button').onclick = function () {
+      switchAllCheckboxes('srv_check', false);
+    };
+
+    document.getElementById('top_button').onclick = function () {
+      document.getElementById('output_textarea').scrollTop = 0
+    };
+    document.getElementById('bottom_button').onclick = function () {
+      textArea = document.getElementById('output_textarea');
+      textArea.scrollTop = textArea.scrollHeight;
+    };
+
+    document.getElementById('ps_run_button').click();
+  </script>
+</body>
+
+</html>
